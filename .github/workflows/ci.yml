@@ -41,4 +41,22 @@ jobs:
         uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
 
       - name: Test Rust binding scaffold
-        run: cargo test --manifest-path bindings/rust/Cargo.toml --locked
+        run: cargo test --manifest-path bindings/rust/Cargo.toml --locked --features c-abi
+
+  c-abi:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+
+      - name: Build libdropworks
+        run: cargo build --manifest-path bindings/rust/Cargo.toml --locked --features c-abi
+
+      - name: C ABI smoke test
+        run: |
+          cc -Iinclude bindings/c/smoke.c \
+            -Lbindings/rust/target/debug -ldropworks -o /tmp/dropworks-smoke
+          LD_LIBRARY_PATH=bindings/rust/target/debug /tmp/dropworks-smoke

@@ -15,6 +15,14 @@ cargo build --release --manifest-path ../rust/Cargo.toml --features c-abi
 
 Link against that shared library (and the header) from C, C#, or GDScript.
 
+`smoke.c` is a compile-link-run check of the ABI that needs no network:
+
+```sh
+cc -Iinclude bindings/c/smoke.c \
+  -Lbindings/rust/target/debug -ldropworks -o /tmp/dropworks-smoke
+LD_LIBRARY_PATH=bindings/rust/target/debug /tmp/dropworks-smoke
+```
+
 Usage:
 
 ```c
