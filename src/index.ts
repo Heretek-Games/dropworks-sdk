@@ -46,6 +46,18 @@ export class DropworksClient {
     return response.ok;
   }
 
+  /** Submits a score to a global leaderboard for the signed-in user. */
+  async submitScore(leaderboardKey: string, score: number): Promise<boolean> {
+    if (!this.session) throw new Error("Dropworks client is not signed in");
+    const response = await this.transport.post("/api/v1/dropworks/leaderboard", {
+      appId: this.session.appId,
+      userId: this.session.userId,
+      key: leaderboardKey,
+      score,
+    });
+    return response.ok;
+  }
+
   get currentSession(): DropworksSession | null {
     return this.session;
   }

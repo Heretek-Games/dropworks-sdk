@@ -28,3 +28,21 @@ test("DropworksClient rejects achievement unlock before sign-in", async () => {
   const client = new DropworksClient(fakeTransport({}));
   await assert.rejects(() => client.unlockAchievement("a1"), /not signed in/);
 });
+
+test("DropworksClient submits leaderboard scores after sign-in", async () => {
+  const client = new DropworksClient(
+    fakeTransport({
+      "/api/v1/dropworks/session": { userId: "u1" },
+      "/api/v1/dropworks/leaderboard": {},
+    }),
+  );
+  const session = await client.signIn("app", "token");
+  assert.equal(session.userId, "u1");
+  assert.equal(await client.submitScore("high-score", 42), true);
+
+  const signedOut = new DropworksClient(fakeTransport({}));
+  await assert.rejects(
+    () => signedOut.submitScore("high-score", 1),
+    /not signed in/,
+  );
+});

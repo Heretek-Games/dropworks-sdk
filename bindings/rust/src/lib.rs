@@ -170,6 +170,42 @@ impl<T: Transport> DropworksClient<T> {
         let response = self.transport.execute(request).await?;
         Ok((200..300).contains(&response.status))
     }
+
+    /// Submits a score to a global leaderboard for the signed-in user.
+    pub async fn submit_score(
+        &self,
+        leaderboard_key: &str,
+        score: f64,
+    ) -> Result<bool, DropworksError> {
+        if leaderboard_key.is_empty() {
+            return Err(DropworksError::InvalidArgument(
+                "leaderboard key is required".to_string(),
+            ));
+        }
+        if !score.is_finite() {
+            return Err(DropworksError::InvalidArgument(
+                "score must be finite".to_string(),
+            ));
+        }
+        let session = self.session.as_ref().ok_or(DropworksError::NotSignedIn)?;
+        let body = serde_json::json!({
+            "appId": session.app_id,
+            "userId": session.user_id,
+            "key": leaderboard_key,
+            "score": score,
+        });
+        let mut request = HttpRequest::post(
+            format!("{}{API_BASE_PATH}/leaderboard", self.base_url),
+            serde_json::to_string(&body)
+                .map_err(|error| DropworksError::InvalidResponse(error.to_string()))?,
+        );
+        request.headers.push((
+            "authorization".to_string(),
+            format!("Bearer {}", session.auth_token),
+        ));
+        let response = self.transport.execute(request).await?;
+        Ok((200..300).contains(&response.status))
+    }
 }
 
 #[cfg(test)]
@@ -294,5 +330,25 @@ mod tests {
 
         let error = block_on(client.sign_in("app", "token")).unwrap_err();
         assert!(matches!(error, DropworksError::InvalidResponse(_)));
+    }
+
+    #[test]
+    fn submit_score_requires_sign_in_and_posts_the_contract_body() {
+        let transport = MockTransport::new(vec![
+            (200, r#"{"userId":"user-1"}"#.to_string()),
+            (200, "{}".to_string()),
+        ]);
+        let mut client = DropworksClient::new(transport, "https://drop.example.com");
+
+        let error = block_on(client.submit_score("high", 1.0)).unwrap_err();
+        assert!(matches!(error, DropworksError::NotSignedIn));
+
+        block_on(client.sign_in("app", "token")).unwrap();
+        assert!(block_on(client.submit_score("high", 42.0)).unwrap());
+
+        let requests = client.transport.requests();
+        let body = requests.last().unwrap().body.as_deref().unwrap();
+        assert!(body.contains(r#""key":"high""#));
+        assert!(body.contains(r#""score":42.0"#));
     }
 }
