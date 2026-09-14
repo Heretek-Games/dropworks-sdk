@@ -5,10 +5,14 @@ Dropworks native game SDK (Steamworks replacement) and language bindings (#19).
 ## Commands
 
 ```sh
-pnpm install
-pnpm build
-pnpm test
+npm ci
+npm run typecheck
+npm run build
+npm test
+
+cargo test --manifest-path bindings/rust/Cargo.toml
 ```
 
-Built on `@droposs/plugin-sdk` (plugin API v2); the dependency resolves the
-sibling checkout at `../drop-plugin-sdk/packages/plugin-sdk`.
+This repo has no dependency on `@droposs/plugin-sdk`; it ships a standalone
+TypeScript reference client, a C ABI header (`include/dropworks.h`), and
+language bindings under `bindings/`.
