@@ -83,3 +83,20 @@ jobs:
 
       - name: C# binding smoke test
         run: LD_LIBRARY_PATH=bindings/rust/target/debug dotnet run --project bindings/csharp/Dropworks.Smoke/Dropworks.Smoke.csproj -c Release --no-build
+
+  gdscript:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Godot 4.3
+        run: |
+          curl -sSL -o /tmp/godot.zip \
+            https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
+          unzip -oq /tmp/godot.zip -d /tmp/godot
+
+      - name: GDScript binding test
+        run: |
+          /tmp/godot/Godot_v4.3-stable_linux.x86_64 --headless \
+            --path bindings/gdscript --script test_dropworks.gd
