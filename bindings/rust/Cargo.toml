@@ -13,6 +13,12 @@ default = []
 # Enables the reqwest-backed HTTP transport. Games embedding their own HTTP
 # stack can skip this feature and implement `Transport` directly.
 http = ["dep:reqwest"]
+# Builds the C ABI shared library (`libdropworks`) declared by
+# `include/dropworks.h`, using reqwest's blocking client internally.
+c-abi = ["dep:reqwest"]
+
+[lib]
+crate-type = ["rlib", "cdylib"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
@@ -20,4 +26,5 @@ serde_json = "1"
 reqwest = { version = "0.12", optional = true, default-features = false, features = [
     "json",
     "rustls-tls",
+    "blocking",
 ] }

@@ -19,6 +19,9 @@
 
 mod transport;
 
+#[cfg(feature = "c-abi")]
+pub mod cabi;
+
 pub use transport::{BoxFuture, HttpRequest, HttpResponse, Transport, TransportError};
 
 #[cfg(feature = "http")]
@@ -154,11 +157,16 @@ impl<T: Transport> DropworksClient<T> {
             "userId": session.user_id,
             "achievementId": achievement_id,
         });
-        let request = HttpRequest::post(
+        let mut request = HttpRequest::post(
             format!("{}{API_BASE_PATH}/achievement", self.base_url),
             serde_json::to_string(&body)
                 .map_err(|error| DropworksError::InvalidResponse(error.to_string()))?,
         );
+        // The server authenticates the unlock with the session's API token.
+        request.headers.push((
+            "authorization".to_string(),
+            format!("Bearer {}", session.auth_token),
+        ));
         let response = self.transport.execute(request).await?;
         Ok((200..300).contains(&response.status))
     }

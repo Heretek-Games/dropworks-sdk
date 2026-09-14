@@ -8,9 +8,12 @@
  *
  * This header is the shared ABI target for the C, C#, GDScript, and Rust
  * bindings in `bindings/`. The reference implementation (`libdropworks`) is
- * NOT shipped yet — it is tracked in Heretek-Games/dropworks-sdk#19. Linking
- * against this header will only work once that library exists; the header is
- * published now so bindings can target a stable contract.
+ * built from the Rust crate in `bindings/rust` with the `c-abi` feature:
+ *
+ *     cargo build --release --manifest-path bindings/rust/Cargo.toml --features c-abi
+ *
+ * which produces `libdropworks.{so,dylib,dll}`. The header is the stable
+ * contract every binding links against.
  *
  * Memory ownership:
  *   - `dropworks_client*` and `dropworks_session*` are owned by the caller and

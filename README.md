@@ -16,11 +16,15 @@ WS   /api/v1/dropworks/presence     presence (not implemented yet)
 | Path | Status |
 | :--- | :--- |
 | `src/` | Reference TypeScript client (`DropworksClient`). |
-| `include/dropworks.h` | C ABI declarations shared by every native binding. **Header only** — the `libdropworks` implementation is tracked in #19. |
-| `bindings/rust/` | `dropworks` crate scaffold: transport-abstracted client mirroring the TS API, with unit tests. REST only; no presence client yet. |
-| `bindings/c/` | README pointing at `include/dropworks.h`; implementation pending #19. |
+| `include/dropworks.h` | C ABI declarations; implemented by `libdropworks`. |
+| `bindings/rust/` | `dropworks` crate: async client over a pluggable transport, plus the C ABI cdylib (`--features c-abi`). REST only; no presence client yet. |
+| `bindings/c/` | Links `libdropworks` and `include/dropworks.h`. |
 | `bindings/csharp/` | Planned `Dropworks.Client`; will P/Invoke the C ABI. |
 | `bindings/gdscript/` | Planned Godot 4 autoload; will use a GDExtension over the C ABI. |
+
+The server side of this contract is implemented in
+[`Heretek-Games/drop`](https://github.com/Heretek-Games/drop)
+(`server/server/api/v1/dropworks/`, commit `45515274`).
 
 ## Build
 

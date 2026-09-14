@@ -5,11 +5,17 @@ It declares the `dropworks_client`/`dropworks_session` handles plus
 `dropworks_sign_in`, `dropworks_unlock_achievement`, and the presence stub,
 matching the TypeScript reference client.
 
-**Status:** header only. The `libdropworks` reference implementation is tracked
-in [#19](https://github.com/Heretek-Games/dropworks-sdk/issues/19); linking
-against the header will only succeed once that library exists.
+**Status:** implemented. `libdropworks` is built from the Rust crate in
+[`../rust`](../rust) with the `c-abi` feature:
 
-Expected usage once implemented:
+```sh
+cargo build --release --manifest-path ../rust/Cargo.toml --features c-abi
+# produces ../rust/target/release/libdropworks.{so,dylib,dll}
+```
+
+Link against that shared library (and the header) from C, C#, or GDScript.
+
+Usage:
 
 ```c
 #include "dropworks.h"
