@@ -20,7 +20,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Typecheck
         run: npm run typecheck
@@ -38,7 +38,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
 
       - name: Test Rust binding scaffold
         run: cargo test --manifest-path bindings/rust/Cargo.toml --locked
