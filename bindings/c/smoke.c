@@ -54,9 +54,9 @@ int main(void) {
             DROPWORKS_ERR_INVALID_ARGUMENT,
         "submit_score rejects NULL session");
 
-  check(dropworks_set_presence(client, NULL, "game", "online") ==
-            DROPWORKS_ERR_NOT_IMPLEMENTED,
-        "set_presence is declared but not implemented");
+  check(dropworks_set_presence(client, NULL, "game", "in-game") ==
+            DROPWORKS_ERR_INVALID_ARGUMENT,
+        "set_presence rejects NULL session");
 
   check(dropworks_session_app_id(NULL) == DROPWORKS_NULL,
         "session_app_id(NULL) is NULL");

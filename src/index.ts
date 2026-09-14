@@ -58,6 +58,18 @@ export class DropworksClient {
     return response.ok;
   }
 
+  /** Sets rich presence for the signed-in user. */
+  async setPresence(status: string, gameId?: string): Promise<boolean> {
+    if (!this.session) throw new Error("Dropworks client is not signed in");
+    const response = await this.transport.post("/api/v1/dropworks/presence", {
+      appId: this.session.appId,
+      userId: this.session.userId,
+      status,
+      ...(gameId ? { gameId } : {}),
+    });
+    return response.ok;
+  }
+
   get currentSession(): DropworksSession | null {
     return this.session;
   }

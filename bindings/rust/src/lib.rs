@@ -206,6 +206,39 @@ impl<T: Transport> DropworksClient<T> {
         let response = self.transport.execute(request).await?;
         Ok((200..300).contains(&response.status))
     }
+
+    /// Sets rich presence for the signed-in user (POST /api/v1/dropworks/presence).
+    pub async fn set_presence(
+        &self,
+        status: &str,
+        game_id: Option<&str>,
+    ) -> Result<bool, DropworksError> {
+        if status.is_empty() {
+            return Err(DropworksError::InvalidArgument(
+                "status is required".to_string(),
+            ));
+        }
+        let session = self.session.as_ref().ok_or(DropworksError::NotSignedIn)?;
+        let mut body = serde_json::json!({
+            "appId": session.app_id,
+            "userId": session.user_id,
+            "status": status,
+        });
+        if let Some(game_id) = game_id {
+            body["gameId"] = serde_json::Value::String(game_id.to_string());
+        }
+        let mut request = HttpRequest::post(
+            format!("{}{API_BASE_PATH}/presence", self.base_url),
+            serde_json::to_string(&body)
+                .map_err(|error| DropworksError::InvalidResponse(error.to_string()))?,
+        );
+        request.headers.push((
+            "authorization".to_string(),
+            format!("Bearer {}", session.auth_token),
+        ));
+        let response = self.transport.execute(request).await?;
+        Ok((200..300).contains(&response.status))
+    }
 }
 
 #[cfg(test)]
@@ -350,5 +383,25 @@ mod tests {
         let body = requests.last().unwrap().body.as_deref().unwrap();
         assert!(body.contains(r#""key":"high""#));
         assert!(body.contains(r#""score":42.0"#));
+    }
+
+    #[test]
+    fn set_presence_requires_sign_in_and_posts_the_contract_body() {
+        let transport = MockTransport::new(vec![
+            (200, r#"{"userId":"user-1"}"#.to_string()),
+            (200, "{}".to_string()),
+        ]);
+        let mut client = DropworksClient::new(transport, "https://drop.example.com");
+
+        let error = block_on(client.set_presence("in-game", None)).unwrap_err();
+        assert!(matches!(error, DropworksError::NotSignedIn));
+
+        block_on(client.sign_in("app", "token")).unwrap();
+        assert!(block_on(client.set_presence("in-game", Some("game-1"))).unwrap());
+
+        let requests = client.transport.requests();
+        let body = requests.last().unwrap().body.as_deref().unwrap();
+        assert!(body.contains(r#""status":"in-game""#));
+        assert!(body.contains(r#""gameId":"game-1""#));
     }
 }

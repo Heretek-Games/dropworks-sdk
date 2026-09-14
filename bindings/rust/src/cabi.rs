@@ -268,12 +268,60 @@ pub unsafe extern "C" fn dropworks_unlock_achievement(
 
 #[no_mangle]
 pub unsafe extern "C" fn dropworks_set_presence(
-    _client: *mut dropworks_client,
-    _session: *const dropworks_session,
-    _game_id: *const c_char,
-    _status: *const c_char,
+    client: *mut dropworks_client,
+    session: *const dropworks_session,
+    game_id: *const c_char,
+    status: *const c_char,
 ) -> c_int {
-    DROPWORKS_ERR_NOT_IMPLEMENTED
+    if client.is_null() || session.is_null() {
+        return DROPWORKS_ERR_INVALID_ARGUMENT;
+    }
+    let client = &mut *client;
+    let Some(status) = read_cstr(status) else {
+        set_error(client, "status is required");
+        return DROPWORKS_ERR_INVALID_ARGUMENT;
+    };
+    if status.is_empty() {
+        set_error(client, "status is required");
+        return DROPWORKS_ERR_INVALID_ARGUMENT;
+    }
+    let game_id = read_cstr(game_id);
+    let session = &*session;
+
+    let mut body = serde_json::json!({
+        "appId": session.app_id.to_string_lossy(),
+        "userId": session.user_id.to_string_lossy(),
+        "status": status,
+    });
+    if let Some(game_id) = game_id {
+        body["gameId"] = serde_json::Value::String(game_id);
+    }
+
+    let url = format!("{}{API_BASE_PATH}/presence", client.base_url);
+    let response = match client
+        .http
+        .post(&url)
+        .bearer_auth(session.auth_token.to_string_lossy().as_ref())
+        .json(&body)
+        .send()
+    {
+        Ok(response) => response,
+        Err(error) => {
+            set_error(client, error.to_string());
+            return DROPWORKS_ERR_NETWORK;
+        }
+    };
+
+    let status_code = response.status().as_u16();
+    if (200..300).contains(&status_code) {
+        DROPWORKS_OK
+    } else {
+        set_error(
+            client,
+            format!("presence update failed with HTTP {status_code}"),
+        );
+        status_for_http(status_code)
+    }
 }
 
 #[no_mangle]
@@ -456,7 +504,7 @@ mod tests {
             );
             assert_eq!(
                 dropworks_set_presence(client, ptr::null(), ptr::null(), ptr::null()),
-                DROPWORKS_ERR_NOT_IMPLEMENTED
+                DROPWORKS_ERR_INVALID_ARGUMENT
             );
             assert!(!dropworks_last_error(client).is_null());
             dropworks_client_destroy(client);

@@ -46,3 +46,21 @@ test("DropworksClient submits leaderboard scores after sign-in", async () => {
     /not signed in/,
   );
 });
+
+test("DropworksClient sets presence after sign-in", async () => {
+  const client = new DropworksClient(
+    fakeTransport({
+      "/api/v1/dropworks/session": { userId: "u1" },
+      "/api/v1/dropworks/presence": {},
+    }),
+  );
+  await client.signIn("app", "token");
+  assert.equal(await client.setPresence("in-game", "game-1"), true);
+  assert.equal(await client.setPresence("online"), true);
+
+  const signedOut = new DropworksClient(fakeTransport({}));
+  await assert.rejects(
+    () => signedOut.setPresence("in-game"),
+    /not signed in/,
+  );
+});

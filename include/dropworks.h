@@ -5,7 +5,7 @@
  *   POST /api/v1/dropworks/session      (sign in)
  *   POST /api/v1/dropworks/achievement  (unlock an achievement)
  *   POST /api/v1/dropworks/leaderboard  (submit a leaderboard score)
- *   WS   /api/v1/dropworks/presence     (presence updates, not declared yet)
+ *   POST /api/v1/dropworks/presence     (set rich presence)
  *
  * This header is the shared ABI target for the C, C#, GDScript, and Rust
  * bindings in `bindings/`. The reference implementation (`libdropworks`) is
@@ -142,10 +142,9 @@ DROPWORKS_API dropworks_status dropworks_submit_score(
     int* out_improved);
 
 /**
- * Sets the player's rich presence for a game.
- *
- * Declared for ABI stability; wiring to the presence WebSocket channel
- * (WS /api/v1/dropworks/presence) is not implemented yet (#19).
+ * Sets the player's rich presence for a game
+ * (POST /api/v1/dropworks/presence). `game_id` may be NULL, in which case the
+ * server uses the signed-in app id.
  */
 DROPWORKS_API dropworks_status dropworks_set_presence(
     dropworks_client* client,
