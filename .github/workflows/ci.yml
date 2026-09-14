@@ -30,6 +30,8 @@ jobs:
 
       - name: Test
         run: npm test
+      - name: Lint
+        run: npm run lint
 
   rust:
     runs-on: ubuntu-latest
