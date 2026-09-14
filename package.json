@@ -1,0 +1,16 @@
+{
+  "name": "@heretek-games/dropworks-sdk",
+  "version": "0.1.0",
+  "description": "Dropworks native game SDK for C/C++, Rust, C#, and GDScript bindings",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "scripts": {
+    "build": "rm -rf dist && tsc",
+    "test": "node --test dist/test/*.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0"
+  },
+  "license": "MIT"
+}
