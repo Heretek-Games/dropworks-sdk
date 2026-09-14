@@ -2,9 +2,10 @@
  * dropworks.h — C ABI for the Dropworks native game SDK.
  *
  * Dropworks is the Steamworks-replacement surface exposed by a Drop server:
- *   POST /api/v1/dropworks/session       (sign in)
- *   POST /api/v1/dropworks/achievement   (unlock an achievement)
- *   WS   /api/v1/dropworks/presence      (presence updates, not declared yet)
+ *   POST /api/v1/dropworks/session      (sign in)
+ *   POST /api/v1/dropworks/achievement  (unlock an achievement)
+ *   POST /api/v1/dropworks/leaderboard  (submit a leaderboard score)
+ *   WS   /api/v1/dropworks/presence     (presence updates, not declared yet)
  *
  * This header is the shared ABI target for the C, C#, GDScript, and Rust
  * bindings in `bindings/`. The reference implementation (`libdropworks`) is
@@ -127,6 +128,18 @@ DROPWORKS_API dropworks_status dropworks_unlock_achievement(
     const dropworks_session* session,
     const char* achievement_id,
     int* out_unlocked);
+
+/**
+ * Submits a global leaderboard score (POST /api/v1/dropworks/leaderboard).
+ * `out_improved` is set to 1 when the score became the player's best, 0
+ * otherwise; it must not be NULL.
+ */
+DROPWORKS_API dropworks_status dropworks_submit_score(
+    dropworks_client* client,
+    const dropworks_session* session,
+    const char* leaderboard_key,
+    double score,
+    int* out_improved);
 
 /**
  * Sets the player's rich presence for a game.

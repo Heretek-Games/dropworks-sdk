@@ -277,6 +277,69 @@ pub unsafe extern "C" fn dropworks_set_presence(
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn dropworks_submit_score(
+    client: *mut dropworks_client,
+    session: *const dropworks_session,
+    leaderboard_key: *const c_char,
+    score: f64,
+    out_improved: *mut c_int,
+) -> c_int {
+    if client.is_null() || session.is_null() || out_improved.is_null() {
+        return DROPWORKS_ERR_INVALID_ARGUMENT;
+    }
+    let client = &mut *client;
+    let Some(key) = read_cstr(leaderboard_key) else {
+        set_error(client, "leaderboard key is required");
+        return DROPWORKS_ERR_INVALID_ARGUMENT;
+    };
+    if key.is_empty() || !score.is_finite() {
+        set_error(client, "leaderboard key and a finite score are required");
+        return DROPWORKS_ERR_INVALID_ARGUMENT;
+    }
+    let session = &*session;
+
+    let body = serde_json::json!({
+        "appId": session.app_id.to_string_lossy(),
+        "userId": session.user_id.to_string_lossy(),
+        "key": key,
+        "score": score,
+    });
+    let url = format!("{}{API_BASE_PATH}/leaderboard", client.base_url);
+    let response = match client
+        .http
+        .post(&url)
+        .bearer_auth(session.auth_token.to_string_lossy().as_ref())
+        .json(&body)
+        .send()
+    {
+        Ok(response) => response,
+        Err(error) => {
+            *out_improved = 0;
+            set_error(client, error.to_string());
+            return DROPWORKS_ERR_NETWORK;
+        }
+    };
+
+    let status = response.status().as_u16();
+    if (200..300).contains(&status) {
+        let body = response.text().unwrap_or_default();
+        let improved = serde_json::from_str::<serde_json::Value>(&body)
+            .ok()
+            .and_then(|value| value.get("improved").and_then(|value| value.as_bool()))
+            .unwrap_or(true);
+        *out_improved = c_int::from(improved);
+        DROPWORKS_OK
+    } else {
+        *out_improved = 0;
+        set_error(
+            client,
+            format!("score submission failed with HTTP {status}"),
+        );
+        status_for_http(status)
+    }
+}
+
+#[no_mangle]
 pub extern "C" fn dropworks_status_string(status: c_int) -> *const c_char {
     let value: &'static [u8] = match status {
         DROPWORKS_OK => b"DROPWORKS_OK\0",
@@ -378,6 +441,17 @@ mod tests {
             let mut unlocked: c_int = 9;
             assert_eq!(
                 dropworks_unlock_achievement(client, ptr::null(), ptr::null(), &mut unlocked),
+                DROPWORKS_ERR_INVALID_ARGUMENT
+            );
+            let mut improved: c_int = 9;
+            assert_eq!(
+                dropworks_submit_score(
+                    client,
+                    ptr::null(),
+                    b"high\0".as_ptr().cast(),
+                    1.0,
+                    &mut improved
+                ),
                 DROPWORKS_ERR_INVALID_ARGUMENT
             );
             assert_eq!(

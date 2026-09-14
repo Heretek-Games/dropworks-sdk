@@ -49,6 +49,11 @@ int main(void) {
         "sign_in rejects NULL app id");
   check(session == NULL, "no session on failure");
 
+  int improved = 9;
+  check(dropworks_submit_score(client, NULL, "high-score", 1.0, &improved) ==
+            DROPWORKS_ERR_INVALID_ARGUMENT,
+        "submit_score rejects NULL session");
+
   check(dropworks_set_presence(client, NULL, "game", "online") ==
             DROPWORKS_ERR_NOT_IMPLEMENTED,
         "set_presence is declared but not implemented");
