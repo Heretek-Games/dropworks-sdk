@@ -61,6 +61,15 @@ int main(void) {
   check(dropworks_session_app_id(NULL) == DROPWORKS_NULL,
         "session_app_id(NULL) is NULL");
 
+  /* Length-prefixed variants link and validate the same way. */
+  check(dropworks_sign_in_n(client, "app", 3, NULL, 0, &session) ==
+            DROPWORKS_ERR_INVALID_ARGUMENT,
+        "sign_in_n rejects NULL auth token");
+  improved = 9;
+  check(dropworks_submit_score_n(client, NULL, "high-score", 10, 1.0,
+                                 &improved) == DROPWORKS_ERR_INVALID_ARGUMENT,
+        "submit_score_n rejects NULL session");
+
   dropworks_session_destroy(NULL);
   dropworks_client_destroy(client);
 
