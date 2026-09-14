@@ -1,10 +1,42 @@
 # Dropworks C# binding
 
-Planned `Dropworks.Client` package for Unity/Godot C# projects.
+Managed P/Invoke wrapper over the Dropworks C ABI (`libdropworks`).
 
-The binding should P/Invoke the C ABI in
-[`../../include/dropworks.h`](../../include/dropworks.h) rather than reimplement
-HTTP, so all native bindings share one contract. The `libdropworks` reference
-implementation is tracked in
-[#19](https://github.com/Heretek-Games/dropworks-sdk/issues/19); this binding
-is not implemented yet.
+## Layout
+
+- `Dropworks/` — `Dropworks.Client` class library: `DropworksNative` (raw
+  P/Invoke), `DropworksClient`, `DropworksSession`, `DropworksException`.
+- `Dropworks.Smoke/` — a console smoke test that links the real shared library
+  and exercises client creation, argument validation, and error reporting.
+
+## Build
+
+First build the native library (from the repository root):
+
+```sh
+cargo build --manifest-path bindings/rust/Cargo.toml --features c-abi
+```
+
+Then build the managed binding and run the smoke test:
+
+```sh
+dotnet build bindings/csharp/Dropworks.Smoke/Dropworks.Smoke.csproj -c Release
+LD_LIBRARY_PATH=bindings/rust/target/debug \
+  dotnet run --project bindings/csharp/Dropworks.Smoke/Dropworks.Smoke.csproj -c Release --no-build
+```
+
+On Windows, place `dropworks.dll` next to the managed assembly instead of setting
+`LD_LIBRARY_PATH`.
+
+## Usage
+
+```csharp
+using Dropworks;
+
+using var client = new DropworksClient("https://drop.example.com");
+using var session = client.SignIn("app-id", "auth-token");
+
+client.UnlockAchievement(session, "beat-the-boss");
+client.SubmitScore(session, "high-score", 9001);
+client.SetPresence(session, "in-game", "game-id");
+```

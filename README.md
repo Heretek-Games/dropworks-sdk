@@ -19,7 +19,7 @@ WS   /api/v1/dropworks/presence     presence (not implemented yet)
 | `include/dropworks.h` | C ABI declarations; implemented by `libdropworks`. |
 | `bindings/rust/` | `dropworks` crate: async client over a pluggable transport, plus the C ABI cdylib (`--features c-abi`). REST only; no presence client yet. |
 | `bindings/c/` | Links `libdropworks` and `include/dropworks.h`. |
-| `bindings/csharp/` | Planned `Dropworks.Client`; will P/Invoke the C ABI. |
+| `bindings/csharp/` | `Dropworks.Client` P/Invoke wrapper over the C ABI, with a buildable smoke test. |
 | `bindings/gdscript/` | Planned Godot 4 autoload; will use a GDExtension over the C ABI. |
 
 The server side of this contract is implemented in

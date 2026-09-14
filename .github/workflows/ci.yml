@@ -60,3 +60,26 @@ jobs:
           cc -Iinclude bindings/c/smoke.c \
             -Lbindings/rust/target/debug -ldropworks -o /tmp/dropworks-smoke
           LD_LIBRARY_PATH=bindings/rust/target/debug /tmp/dropworks-smoke
+
+  csharp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+
+      - name: Build libdropworks
+        run: cargo build --manifest-path bindings/rust/Cargo.toml --locked --features c-abi
+
+      - name: Build C# binding
+        run: dotnet build bindings/csharp/Dropworks.Smoke/Dropworks.Smoke.csproj -c Release
+
+      - name: C# binding smoke test
+        run: LD_LIBRARY_PATH=bindings/rust/target/debug dotnet run --project bindings/csharp/Dropworks.Smoke/Dropworks.Smoke.csproj -c Release --no-build
