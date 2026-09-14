@@ -1,0 +1,23 @@
+[package]
+name = "dropworks"
+version = "0.1.0"
+edition = "2021"
+description = "Rust binding scaffold for the Dropworks native game SDK"
+license = "MIT"
+repository = "https://github.com/Heretek-Games/dropworks-sdk"
+homepage = "https://github.com/Heretek-Games/dropworks-sdk#readme"
+publish = false
+
+[features]
+default = []
+# Enables the reqwest-backed HTTP transport. Games embedding their own HTTP
+# stack can skip this feature and implement `Transport` directly.
+http = ["dep:reqwest"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", optional = true, default-features = false, features = [
+    "json",
+    "rustls-tls",
+] }
