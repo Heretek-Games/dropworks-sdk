@@ -1,13 +1,12 @@
 # Language bindings
 
 Each binding targets the Dropworks contract described in `../src/index.ts`.
+`include/dropworks.h` is the single source of truth for the native bindings;
+`libdropworks` is built from `bindings/rust` with `--features c-abi`.
 
-| Binding | Status |
-| :--- | :--- |
-| `c/` | Uses the C ABI header at [`../include/dropworks.h`](../include/dropworks.h). Header only until `libdropworks` lands (#19). |
-| `rust/` | `dropworks` crate scaffold with a pluggable `Transport`, session handling, and achievement unlock; unit tested. |
-| `csharp/` | Planned `Dropworks.Client` P/Invoke wrapper over `include/dropworks.h`. |
-| `gdscript/` | Planned Godot 4 autoload backed by a GDExtension over `include/dropworks.h`. |
-
-When `libdropworks` is implemented, the C ABI in `include/dropworks.h` becomes
-the single source of truth for all native bindings.
+| Binding     | Status                                                                                                                                                          |
+| :---------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `c/`        | Links the C ABI (`include/dropworks.h`) and `libdropworks`; `smoke.c` is a compile-link-run test.                                                               |
+| `rust/`     | `dropworks` crate: async client over a pluggable `Transport`, the C ABI cdylib (`--features c-abi`), and session/achievement/leaderboard/presence methods.       |
+| `csharp/`   | `Dropworks.Client` P/Invoke wrapper over `include/dropworks.h`, with a buildable smoke test.                                                                    |
+| `gdscript/` | Godot 4 `HTTPClient` binding (`DropworksClient`) with a headless test.                                                                                          |

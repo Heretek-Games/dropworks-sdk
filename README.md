@@ -8,7 +8,8 @@ served by a Drop instance:
 ```
 POST /api/v1/dropworks/session      sign in
 POST /api/v1/dropworks/achievement  unlock an achievement
-WS   /api/v1/dropworks/presence     presence (not implemented yet)
+POST /api/v1/dropworks/leaderboard  submit a leaderboard score
+POST /api/v1/dropworks/presence     set rich presence
 ```
 
 ## Layout
@@ -17,7 +18,7 @@ WS   /api/v1/dropworks/presence     presence (not implemented yet)
 | :--- | :--- |
 | `src/` | Reference TypeScript client (`DropworksClient`). |
 | `include/dropworks.h` | C ABI declarations; implemented by `libdropworks`. |
-| `bindings/rust/` | `dropworks` crate: async client over a pluggable transport, plus the C ABI cdylib (`--features c-abi`). REST only; no presence client yet. |
+| `bindings/rust/` | `dropworks` crate: async client over a pluggable transport, plus the C ABI cdylib (`--features c-abi`). REST session/achievement/leaderboard/presence. |
 | `bindings/c/` | Links `libdropworks` and `include/dropworks.h`. |
 | `bindings/csharp/` | `Dropworks.Client` P/Invoke wrapper over the C ABI, with a buildable smoke test. |
 | `bindings/gdscript/` | Godot 4 `HTTPClient` binding (`DropworksClient`) with a headless test. |

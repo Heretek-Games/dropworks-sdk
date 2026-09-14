@@ -7,15 +7,16 @@
 //!
 //! - [`DropworksClient::sign_in`] → `POST /api/v1/dropworks/session`
 //! - [`DropworksClient::unlock_achievement`] → `POST /api/v1/dropworks/achievement`
+//! - [`DropworksClient::submit_score`] → `POST /api/v1/dropworks/leaderboard`
+//! - [`DropworksClient::set_presence`] → `POST /api/v1/dropworks/presence`
 //!
-//! The C ABI equivalent lives in `include/dropworks.h`. Presence
-//! (`WS /api/v1/dropworks/presence`) is not implemented yet.
+//! The C ABI equivalent lives in `include/dropworks.h`.
 //!
 //! ## Status
 //!
-//! This crate is an early scaffold: the REST calls and session handling are
-//! implemented against a pluggable [`Transport`], but there is no WebSocket
-//! presence client, retry policy, or C-ABI export layer yet.
+//! This crate implements the REST contract (session, achievement, leaderboard,
+//! presence) over a pluggable [`Transport`] and exports a C ABI with the
+//! `c-abi` feature; there is no WebSocket client or retry policy yet.
 
 mod transport;
 
