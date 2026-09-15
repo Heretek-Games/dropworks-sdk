@@ -414,7 +414,17 @@ pub unsafe extern "C" fn dropworks_set_presence_n(
             set_error(client, "status is required");
             return DROPWORKS_ERR_INVALID_ARGUMENT;
         }
-        let game_id = read_slice(game_id, game_id_len);
+        let game_id = if game_id.is_null() {
+            None
+        } else {
+            match read_slice(game_id, game_id_len) {
+                Some(game_id) => Some(game_id),
+                None => {
+                    set_error(client, "game id is invalid or too long");
+                    return DROPWORKS_ERR_INVALID_ARGUMENT;
+                }
+            }
+        };
 
         let mut body = serde_json::json!({
             "appId": session.app_id.to_string_lossy(),
@@ -576,6 +586,8 @@ pub unsafe extern "C" fn dropworks_last_error(client: *const dropworks_client) -
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
 
     fn base_config() -> dropworks_config {
         dropworks_config {
@@ -758,6 +770,180 @@ mod tests {
                 ),
                 DROPWORKS_ERR_INVALID_ARGUMENT
             );
+            dropworks_client_destroy(client);
+        }
+    }
+
+    /// Reads one complete HTTP request (headers plus declared body) from a
+    /// connection so mock-server tests can assert on the JSON body.
+    fn read_full_request(stream: &mut std::net::TcpStream) -> Vec<u8> {
+        let mut request = Vec::new();
+        let mut buffer = [0u8; 1024];
+        loop {
+            let read = stream.read(&mut buffer).unwrap();
+            if read == 0 {
+                return request;
+            }
+            request.extend_from_slice(&buffer[..read]);
+            let Some(head_end) = request.windows(4).position(|window| window == b"\r\n\r\n") else {
+                continue;
+            };
+            let head = String::from_utf8_lossy(&request[..head_end]);
+            let length = head
+                .lines()
+                .find_map(|line| {
+                    let (name, value) = line.split_once(':')?;
+                    name.trim()
+                        .eq_ignore_ascii_case("content-length")
+                        .then(|| value.trim().parse::<usize>().ok())
+                        .flatten()
+                })
+                .unwrap_or(0);
+            if request.len() >= head_end + 4 + length {
+                return request;
+            }
+        }
+    }
+
+    /// Serves exactly one request with a fixed JSON body. Returns the base URL
+    /// and a handle yielding the raw request bytes.
+    fn serve_json(body: &'static str) -> (String, std::thread::JoinHandle<Vec<u8>>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let handle = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let request = read_full_request(&mut stream);
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            stream.write_all(response.as_bytes()).unwrap();
+            stream.flush().unwrap();
+            request
+        });
+        (format!("http://{address}"), handle)
+    }
+
+    /// Builds a session bound to `client` without going through the network.
+    unsafe fn session_for(client: *mut dropworks_client) -> *mut dropworks_session {
+        Box::into_raw(Box::new(dropworks_session {
+            client_id: (*client).id,
+            app_id: CString::new("app").unwrap(),
+            user_id: CString::new("user").unwrap(),
+            auth_token: CString::new("token").unwrap(),
+        }))
+    }
+
+    #[test]
+    fn submit_score_maps_improved_tri_state_through_the_c_abi() {
+        let cases: [(&str, c_int); 3] = [
+            (r#"{"improved":true}"#, 1),
+            (r#"{"improved":false}"#, 0),
+            ("{}", DROPWORKS_BOOL_UNKNOWN),
+        ];
+        for (payload, expected) in cases {
+            let (base_url, server) = serve_json(payload);
+            let base_url = CString::new(base_url).unwrap();
+            let config = dropworks_config {
+                base_url: base_url.as_ptr(),
+                timeout_ms: 1_000,
+            };
+            unsafe {
+                let mut client: *mut dropworks_client = ptr::null_mut();
+                assert_eq!(dropworks_client_create(&config, &mut client), DROPWORKS_OK);
+                let session = session_for(client);
+                let mut improved: c_int = 9;
+                assert_eq!(
+                    dropworks_submit_score_n(
+                        client,
+                        session,
+                        b"high-score\0".as_ptr().cast(),
+                        10,
+                        1.0,
+                        &mut improved,
+                    ),
+                    DROPWORKS_OK,
+                    "payload {payload}"
+                );
+                assert_eq!(improved, expected, "payload {payload}");
+                dropworks_session_destroy(session);
+                dropworks_client_destroy(client);
+            }
+            server.join().unwrap();
+        }
+    }
+
+    #[test]
+    fn set_presence_rejects_unreadable_game_ids() {
+        unsafe {
+            let mut client: *mut dropworks_client = ptr::null_mut();
+            assert_eq!(
+                dropworks_client_create(&base_config(), &mut client),
+                DROPWORKS_OK
+            );
+            let session = session_for(client);
+            let status = b"in-game\0".as_ptr().cast::<c_char>();
+
+            // A non-NULL game id whose declared length exceeds the 64 KiB cap is
+            // rejected before the pointer is dereferenced.
+            assert_eq!(
+                dropworks_set_presence_n(
+                    client,
+                    session,
+                    b"game\0".as_ptr().cast(),
+                    MAX_STRING_BYTES + 1,
+                    status,
+                    7,
+                ),
+                DROPWORKS_ERR_INVALID_ARGUMENT
+            );
+            // Invalid UTF-8 is rejected the same way instead of being dropped.
+            assert_eq!(
+                dropworks_set_presence_n(
+                    client,
+                    session,
+                    [0xffu8, 0xfe].as_ptr().cast(),
+                    2,
+                    status,
+                    7,
+                ),
+                DROPWORKS_ERR_INVALID_ARGUMENT
+            );
+            assert!(!dropworks_last_error(client).is_null());
+
+            dropworks_session_destroy(session);
+            dropworks_client_destroy(client);
+        }
+    }
+
+    #[test]
+    fn set_presence_keeps_a_null_game_id_optional() {
+        let (base_url, server) = serve_json("{}");
+        let base_url = CString::new(base_url).unwrap();
+        let config = dropworks_config {
+            base_url: base_url.as_ptr(),
+            timeout_ms: 1_000,
+        };
+        unsafe {
+            let mut client: *mut dropworks_client = ptr::null_mut();
+            assert_eq!(dropworks_client_create(&config, &mut client), DROPWORKS_OK);
+            let session = session_for(client);
+            assert_eq!(
+                dropworks_set_presence_n(
+                    client,
+                    session,
+                    ptr::null(),
+                    0,
+                    b"in-game\0".as_ptr().cast(),
+                    7,
+                ),
+                DROPWORKS_OK
+            );
+            let request = String::from_utf8(server.join().unwrap()).unwrap();
+            assert!(request.contains("\"status\":\"in-game\""));
+            assert!(!request.contains("gameId"));
+            dropworks_session_destroy(session);
             dropworks_client_destroy(client);
         }
     }

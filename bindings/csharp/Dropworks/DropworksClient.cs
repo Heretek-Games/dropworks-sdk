@@ -107,8 +107,16 @@ public sealed class DropworksClient : IDisposable
         {
             throw new DropworksException((DropworksStatus)status, LastError());
         }
-        return improved != 0;
+        return IsImproved(improved);
     }
+
+    /// <summary>
+    /// Maps the native tri-state <c>improved</c> out-parameter to a boolean:
+    /// only <c>1</c> is <c>true</c>; <c>0</c> and
+    /// <see cref="DropworksNative.BoolUnknown"/> (<c>-1</c>, the server did not
+    /// report the field) are <c>false</c>.
+    /// </summary>
+    public static bool IsImproved(int improved) => improved == 1;
 
     public void SetPresence(DropworksSession session, string status, string? gameId = null)
     {

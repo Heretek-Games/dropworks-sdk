@@ -40,3 +40,7 @@ client.UnlockAchievement(session, "beat-the-boss");
 client.SubmitScore(session, "high-score", 9001);
 client.SetPresence(session, "in-game", "game-id");
 ```
+
+`SubmitScore` returns `true` only when the server reported the score as a new
+best. When the server omits the `improved` field the native ABI reports
+`DROPWORKS_BOOL_UNKNOWN` (`-1`) and the managed wrapper returns `false`.

@@ -180,7 +180,9 @@ DROPWORKS_API dropworks_status dropworks_submit_score_n(
 /**
  * Sets the player's rich presence for a game
  * (POST /api/v1/dropworks/presence). `game_id` may be NULL, in which case the
- * server uses the signed-in app id.
+ * server uses the signed-in app id. A non-NULL `game_id` must be valid UTF-8
+ * and at most 64 KiB; otherwise the call fails with
+ * DROPWORKS_ERR_INVALID_ARGUMENT.
  */
 DROPWORKS_API dropworks_status dropworks_set_presence(
     dropworks_client* client,
@@ -188,7 +190,10 @@ DROPWORKS_API dropworks_status dropworks_set_presence(
     const char* game_id,
     const char* status);
 
-/** Length-prefixed variant of dropworks_set_presence. */
+/**
+ * Length-prefixed variant of dropworks_set_presence. `game_id_len` is the byte
+ * length of `game_id` when it is not NULL; the same size and UTF-8 limits apply.
+ */
 DROPWORKS_API dropworks_status dropworks_set_presence_n(
     dropworks_client* client,
     const dropworks_session* session,
