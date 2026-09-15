@@ -39,6 +39,13 @@ Check(presenceStatus == DropworksNative.ErrorInvalidArgument, "set_presence reje
 
 Check(!string.IsNullOrEmpty(DropworksNative.LastError(client.Handle)), "last_error is set");
 
+// The native improved flag is tri-state: only 1 means improved.
+Check(DropworksClient.IsImproved(1), "improved 1 -> true");
+Check(!DropworksClient.IsImproved(0), "improved 0 -> false");
+Check(
+    !DropworksClient.IsImproved(DropworksNative.BoolUnknown),
+    "improved -1 (unknown) -> false");
+
 if (failures == 0)
 {
     Console.WriteLine("dropworks C# binding smoke passed");

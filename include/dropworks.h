@@ -82,6 +82,12 @@ typedef enum dropworks_status {
   DROPWORKS_ERR_NOT_IMPLEMENTED = 7
 } dropworks_status;
 
+/**
+ * Sentinel written to an output flag when the server did not report a value
+ * (for example an \`improved\` field omitted from the leaderboard response).
+ */
+#define DROPWORKS_BOOL_UNKNOWN (-1)
+
 typedef struct dropworks_config {
   /** Server base URL, e.g. "https://drop.example.com". Required. */
   const char* base_url;
@@ -107,6 +113,18 @@ DROPWORKS_API dropworks_status dropworks_sign_in(
     const char* auth_token,
     dropworks_session** out_session);
 
+/**
+ * Length-prefixed variant of dropworks_sign_in for callers whose strings are
+ * not NUL-terminated. `app_id_len`/`auth_token_len` are byte lengths.
+ */
+DROPWORKS_API dropworks_status dropworks_sign_in_n(
+    dropworks_client* client,
+    const char* app_id,
+    size_t app_id_len,
+    const char* auth_token,
+    size_t auth_token_len,
+    dropworks_session** out_session);
+
 /** Destroys a session. Safe to call with DROPWORKS_NULL. */
 DROPWORKS_API void dropworks_session_destroy(dropworks_session* session);
 
@@ -129,10 +147,19 @@ DROPWORKS_API dropworks_status dropworks_unlock_achievement(
     const char* achievement_id,
     int* out_unlocked);
 
+/** Length-prefixed variant of dropworks_unlock_achievement. */
+DROPWORKS_API dropworks_status dropworks_unlock_achievement_n(
+    dropworks_client* client,
+    const dropworks_session* session,
+    const char* achievement_id,
+    size_t achievement_id_len,
+    int* out_unlocked);
+
 /**
  * Submits a global leaderboard score (POST /api/v1/dropworks/leaderboard).
- * `out_improved` is set to 1 when the score became the player's best, 0
- * otherwise; it must not be NULL.
+ * `out_improved` is set to 1 when the score became the player's best, 0 when it
+ * did not, and DROPWORKS_BOOL_UNKNOWN when the server did not report the field;
+ * it must not be NULL.
  */
 DROPWORKS_API dropworks_status dropworks_submit_score(
     dropworks_client* client,
@@ -141,16 +168,39 @@ DROPWORKS_API dropworks_status dropworks_submit_score(
     double score,
     int* out_improved);
 
+/** Length-prefixed variant of dropworks_submit_score. */
+DROPWORKS_API dropworks_status dropworks_submit_score_n(
+    dropworks_client* client,
+    const dropworks_session* session,
+    const char* leaderboard_key,
+    size_t leaderboard_key_len,
+    double score,
+    int* out_improved);
+
 /**
  * Sets the player's rich presence for a game
  * (POST /api/v1/dropworks/presence). `game_id` may be NULL, in which case the
- * server uses the signed-in app id.
+ * server uses the signed-in app id. A non-NULL `game_id` must be valid UTF-8
+ * and at most 64 KiB; otherwise the call fails with
+ * DROPWORKS_ERR_INVALID_ARGUMENT.
  */
 DROPWORKS_API dropworks_status dropworks_set_presence(
     dropworks_client* client,
     const dropworks_session* session,
     const char* game_id,
     const char* status);
+
+/**
+ * Length-prefixed variant of dropworks_set_presence. `game_id_len` is the byte
+ * length of `game_id` when it is not NULL; the same size and UTF-8 limits apply.
+ */
+DROPWORKS_API dropworks_status dropworks_set_presence_n(
+    dropworks_client* client,
+    const dropworks_session* session,
+    const char* game_id,
+    size_t game_id_len,
+    const char* status,
+    size_t status_len);
 
 /** Borrowed, stable human-readable name for a status code. */
 DROPWORKS_API const char* dropworks_status_string(dropworks_status status);

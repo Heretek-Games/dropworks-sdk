@@ -17,6 +17,7 @@ public static class DropworksNative
     public const int ErrorNotSignedIn = 5;
     public const int ErrorInternal = 6;
     public const int ErrorNotImplemented = 7;
+    public const int BoolUnknown = -1;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct Config
