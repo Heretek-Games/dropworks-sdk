@@ -64,6 +64,12 @@ fn guard(fallback: c_int, body: impl FnOnce() -> c_int) -> c_int {
     catch_unwind(AssertUnwindSafe(body)).unwrap_or(fallback)
 }
 
+/// Run an `extern "C"` pointer-returning body, converting a Rust panic into a
+/// fallback pointer instead of letting unwinding cross the ABI boundary.
+fn guard_ptr<T>(fallback: *const T, body: impl FnOnce() -> *const T) -> *const T {
+    catch_unwind(AssertUnwindSafe(body)).unwrap_or(fallback)
+}
+
 /// Length of a required NUL-terminated string, or 0 for a null pointer.
 unsafe fn cstr_len(value: *const c_char) -> usize {
     if value.is_null() {
@@ -558,29 +564,33 @@ pub unsafe extern "C" fn dropworks_submit_score_n(
 
 #[no_mangle]
 pub extern "C" fn dropworks_status_string(status: c_int) -> *const c_char {
-    let value: &'static [u8] = match status {
-        DROPWORKS_OK => b"DROPWORKS_OK\0",
-        DROPWORKS_ERR_INVALID_ARGUMENT => b"DROPWORKS_ERR_INVALID_ARGUMENT\0",
-        DROPWORKS_ERR_NETWORK => b"DROPWORKS_ERR_NETWORK\0",
-        DROPWORKS_ERR_UNAUTHORIZED => b"DROPWORKS_ERR_UNAUTHORIZED\0",
-        DROPWORKS_ERR_SERVER => b"DROPWORKS_ERR_SERVER\0",
-        DROPWORKS_ERR_NOT_SIGNED_IN => b"DROPWORKS_ERR_NOT_SIGNED_IN\0",
-        DROPWORKS_ERR_INTERNAL => b"DROPWORKS_ERR_INTERNAL\0",
-        DROPWORKS_ERR_NOT_IMPLEMENTED => b"DROPWORKS_ERR_NOT_IMPLEMENTED\0",
-        _ => b"DROPWORKS_ERR_UNKNOWN\0",
-    };
-    value.as_ptr().cast()
+    guard_ptr(b"DROPWORKS_ERR_UNKNOWN\0".as_ptr().cast(), || {
+        let value: &'static [u8] = match status {
+            DROPWORKS_OK => b"DROPWORKS_OK\0",
+            DROPWORKS_ERR_INVALID_ARGUMENT => b"DROPWORKS_ERR_INVALID_ARGUMENT\0",
+            DROPWORKS_ERR_NETWORK => b"DROPWORKS_ERR_NETWORK\0",
+            DROPWORKS_ERR_UNAUTHORIZED => b"DROPWORKS_ERR_UNAUTHORIZED\0",
+            DROPWORKS_ERR_SERVER => b"DROPWORKS_ERR_SERVER\0",
+            DROPWORKS_ERR_NOT_SIGNED_IN => b"DROPWORKS_ERR_NOT_SIGNED_IN\0",
+            DROPWORKS_ERR_INTERNAL => b"DROPWORKS_ERR_INTERNAL\0",
+            DROPWORKS_ERR_NOT_IMPLEMENTED => b"DROPWORKS_ERR_NOT_IMPLEMENTED\0",
+            _ => b"DROPWORKS_ERR_UNKNOWN\0",
+        };
+        value.as_ptr().cast()
+    })
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn dropworks_last_error(client: *const dropworks_client) -> *const c_char {
-    if client.is_null() {
-        return ptr::null();
-    }
-    match &(*client).last_error {
-        Some(error) => error.as_ptr(),
-        None => ptr::null(),
-    }
+    guard_ptr(ptr::null(), || {
+        if client.is_null() {
+            return ptr::null();
+        }
+        match &(*client).last_error {
+            Some(error) => error.as_ptr(),
+            None => ptr::null(),
+        }
+    })
 }
 
 #[cfg(test)]
@@ -697,6 +707,15 @@ mod tests {
         let code = guard(DROPWORKS_ERR_INTERNAL, || panic!("boom"));
         assert_eq!(code, DROPWORKS_ERR_INTERNAL);
         assert_eq!(guard(DROPWORKS_ERR_INTERNAL, || DROPWORKS_OK), DROPWORKS_OK);
+    }
+
+    #[test]
+    fn guard_ptr_converts_panics_into_fallback_pointer() {
+        let fallback: *const c_char = ptr::null();
+        let result = guard_ptr(fallback, || panic!("boom"));
+        assert_eq!(result, fallback);
+        let valid = b"test\0".as_ptr().cast();
+        assert_eq!(guard_ptr(fallback, || valid), valid);
     }
 
     #[test]
